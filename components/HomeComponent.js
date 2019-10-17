@@ -16,6 +16,7 @@ function RenderItem(props) {
         image={require('./images/uthappizza.png')}
       >
         <Text style={{margin: 10}}>{item.description}</Text>
+        
       </Card>
     )
   } else {
