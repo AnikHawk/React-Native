@@ -7,6 +7,7 @@ import {LEADERS} from '../shared/leaders'
 import {connect} from 'react-redux'
 import {baseUrl} from '../shared/baseUrl'
 import {Loading} from './LoadingComponent'
+import * as Animatable from 'react-native-animatable'
 
 const mapStateToProps = state => {
   return {
