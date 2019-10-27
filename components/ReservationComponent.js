@@ -7,28 +7,27 @@ import {
   Picker,
   Switch,
   Button,
-  Modal,
   Alert,
+  Animated,
+  Easing,
+  Platform,
 } from 'react-native'
 import DatePicker from 'react-native-datepicker'
 import * as Animatable from 'react-native-animatable'
-import * as Permissions from 'expo-permissions'
 import {Notifications} from 'expo'
+import * as Permissions from 'expo-permissions'
+import * as Calendar from 'expo-calendar'
+import moment from 'moment'
 
 class Reservation extends Component {
   constructor(props) {
     super(props)
-
+    this.animatedValue = new Animated.Value(0)
     this.state = {
       guests: 1,
       smoking: false,
       date: '',
-      showModal: false,
     }
-  }
-
-  toggleModal() {
-    this.setState({showModal: !this.state.showModal})
   }
 
   static navigationOptions = {
@@ -37,7 +36,31 @@ class Reservation extends Component {
 
   handleReservation() {
     console.log(JSON.stringify(this.state))
-    this.toggleModal()
+    Alert.alert(
+      'Your Reservation OK?',
+      'Number of Guests: ' +
+        this.state.guests +
+        '\nSmoking?: ' +
+        this.state.smoking +
+        ' \nDate and Time: ' +
+        this.state.date,
+      [
+        {
+          text: 'Cancel',
+          onPress: () => this.resetForm(),
+          style: ' cancel',
+        },
+        {
+          text: 'OK',
+          onPress: () => {
+            this.presentLocalNotification(this.state.date)
+            this.addReservationToCalendar(this.state.date)
+            this.resetForm()
+          },
+        },
+      ],
+      {cancelable: false}
+    )
   }
 
   resetForm() {
@@ -45,7 +68,6 @@ class Reservation extends Component {
       guests: 1,
       smoking: false,
       date: '',
-      showModal: false,
     })
   }
 
@@ -80,10 +102,69 @@ class Reservation extends Component {
     })
   }
 
+  async obtainCalendarPermission() {
+    let calendarPermission = await Permissions.getAsync(Permissions.CALENDAR)
+    if (calendarPermission.status !== 'granted') {
+      calendarPermission = await Permissions.askAsync(Permissions.CALENDAR)
+      if (calendarPermission.status !== 'granted') {
+        Alert.alert('Permission not granted to calendar')
+      }
+    }
+    return calendarPermission
+  }
+
+  addReservationToCalendar = async date => {
+    await this.obtainCalendarPermission()
+    var startDate = moment(Date.parse(date)).toDate()
+    var endDate = moment(Date.parse(date) + 2 * 60 * 60 * 1000).toDate()
+
+    const event = {
+      title: 'Con Fusion Table Reservation',
+      startDate: startDate,
+      endDate: endDate,
+      timeZone: 'Asia/Hong_Kong',
+      location:
+        '121, Clear Water Bay Road, Clear Water Bay, Kowloon, Hong Kong',
+    }
+
+    let calendar = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT)
+
+    const newCalendar = {
+      title: 'Reservation',
+      entityType: Calendar.EntityTypes.EVENT,
+      color: '#2196F3',
+      sourceId:
+        Platform.OS === 'ios'
+          ? calendar.find(cal => cal.source && cal.source.name === 'Default')
+              .source.id
+          : undefined,
+      source:
+        Platform.OS === 'android'
+          ? {
+              name: calendar.find(
+                cal => cal.accessLevel === Calendar.CalendarAccessLevel.OWNER
+              ).source.name,
+              isLocalAccount: true,
+            }
+          : undefined,
+      name: 'Reservation',
+      accessLevel: Calendar.CalendarAccessLevel.OWNER,
+      ownerAccount:
+        Platform.OS === 'android'
+          ? calendar.find(
+              cal => cal.accessLevel == Calendar.CalendarAccessLevel.OWNER
+            ).ownerAccount
+          : undefined,
+    }
+
+    const calendarId = await Calendar.createCalendarAsync(newCalendar)
+    const createEvent = await Calendar.createEventAsync(calendarId, event)
+  }
+
   render() {
     return (
       <ScrollView>
-        <Animatable.View animation="zoomIn" duration={3000}>
+        <Animatable.View animation="zoomIn" duration={2000} delay={1000}>
           <View style={styles.formRow}>
             <Text style={styles.formLabel}>Number of Guests</Text>
             <Picker
@@ -140,77 +221,12 @@ class Reservation extends Component {
           </View>
           <View style={styles.formRow}>
             <Button
-              onPress={() =>
-                Alert.alert(
-                  'Your Reservation OK?',
-                  'Number of guest: ' +
-                    this.state.guests +
-                    '\n' +
-                    'Smoking?: ' +
-                    this.state.smoking +
-                    '\n' +
-                    'Date and Time: ' +
-                    this.state.date +
-                    '\n',
-                  [
-                    {
-                      text: 'Cancel',
-                      onPress: () => {
-                        this.resetForm()
-                      },
-                    },
-                    {
-                      text: 'OK',
-                      onPress: () => {
-                        this.presentLocalNotification(this.state.date)
-                        this.resetForm()
-                      },
-                    },
-                  ],
-                  {cancelable: false}
-                )
-              }
+              onPress={() => this.handleReservation()}
               title="Reserve"
               color="#512DA8"
               accessibilityLabel="Learn more about this purple button"
             />
           </View>
-
-          <Modal
-            animationType={'slide'}
-            transparent={false}
-            visible={this.state.showModal}
-            onDismiss={() => {
-              this.toggleModal()
-              this.resetForm()
-            }}
-            onRequestClose={() => {
-              this.toggleModal()
-              this.resetForm()
-            }}
-          >
-            <View style={styles.modal}>
-              <Text style={styles.modalTitle}>Your Reservation</Text>
-              <Text style={styles.modalText}>
-                Number of Guests: {this.state.guests}
-              </Text>
-              <Text style={styles.modalText}>
-                Smoking?: {this.state.smoking ? 'Yes' : 'No'}
-              </Text>
-              <Text style={styles.modalText}>
-                Date and Time: {this.state.date}
-              </Text>
-
-              <Button
-                onPress={() => {
-                  this.toggleModal()
-                  this.resetForm()
-                }}
-                color="#512DA8"
-                title="Close"
-              />
-            </View>
-          </Modal>
         </Animatable.View>
       </ScrollView>
     )
