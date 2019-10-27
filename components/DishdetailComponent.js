@@ -9,11 +9,13 @@ import {
   Button,
   Alert,
   PanResponder,
+  Share,
 } from 'react-native'
 import {Card, Icon, Rating, Input} from 'react-native-elements'
 import {connect} from 'react-redux'
 import {baseUrl} from '../shared/baseUrl'
 import {postFavorite, postComment} from '../redux/ActionCreators'
+
 const mapStateToProps = state => {
   return {
     dishes: state.dishes,
@@ -84,6 +86,19 @@ const RenderDish = props => {
     },
   })
 
+  const shareDish = (title, message, url) => {
+    Share.share(
+      {
+        title: title,
+        message: title + ':\n' + message + '\n' + url,
+        url: url,
+      },
+      {
+        dialogTitle: 'Share ' + title,
+      }
+    )
+  }
+
   if (dish != null) {
     return (
       <Animatable.View
@@ -115,6 +130,17 @@ const RenderDish = props => {
               type="font-awesome"
               color="#512da8"
               onPress={() => props.toggleModal()}
+            />
+            <Icon
+              raised
+              reverse
+              name="share"
+              type="font-awesome"
+              color="#51D2A8"
+              style={styles.cardItem}
+              onPress={() =>
+                shareDish(dish.name, dish.description, baseUrl + dish.image)
+              }
             />
           </View>
         </Card>
